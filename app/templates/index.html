@@ -1,0 +1,29 @@
+{% extends "base.html" %} {% block script %}
+<script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+{% endblock %} {% block content %}
+<div class="container mt-4">
+  <div class="row">
+    <!-- chat section -->
+    <div class="col-lg-8 col-md-6">
+      <div class="chat-box-container">
+        <div id="chat-area" class="chat-box mb-3 p-3 rounded">
+          <!-- AI and Human conversation goes here -->
+        </div>
+      </div>
+      <div class="input-group">
+        <textarea id="message-input" class="form-control" rows="2"></textarea>
+        <button id="submit-button" class="btn btn-primary">Send</button>
+      </div>
+    </div>
+    <!-- character section -->
+    <div class="col-lg-4 col-md-6 d-none d-md-block">
+      <div class="character-image">
+        <img id="ai-image" src="{{ url_for('static', filename='img/raven_full.png') }}" class="img-fluid rounded" />
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  initializeChat({{ messages|tojson }}, "{{ channel }}");
+</script>
+{% endblock %}

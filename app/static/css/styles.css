@@ -1,0 +1,100 @@
+/* ari/static/styles.css */
+
+body {
+  background-image: url("../img/background.jpeg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: rgb(0, 4, 5);
+  margin: 0;
+  padding: 0;
+}
+
+.wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.content {
+  flex: 1;
+  padding: 20px;
+}
+
+.flash-messages {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 300px;
+}
+
+/* chat dialog */
+
+#ai-image {
+  border-radius: 10px;
+  max-width: 100%;
+  display: block; /* Ensure the image behaves as a block element */
+  margin: 0 auto; /* Center the image horizontally */
+}
+
+.character-image {
+  display: flex;
+  justify-content: center; /* Center the image vertically */
+}
+
+.chat-box-container {
+  height: calc(100vh - 14rem);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Add padding to the input group to avoid overlapping with the chat area */
+.input-group {
+  padding-top: 10px;
+}
+
+.chat-box {
+  display: flex;
+  flex-direction: column;
+}
+
+.message {
+  margin-bottom: 0.5rem;
+  border-radius: 10px;
+  padding: 10px;
+  line-height: 1.4;
+  width: fit-content;
+}
+
+.human {
+  margin-right: auto;
+  background-color: #90cdf4;
+  opacity: 0.6;
+}
+
+.ai {
+  margin-left: auto;
+  background-color: #fbd38d;
+  opacity: 0.6;
+}
+
+.message:last-child,
+.message:nth-last-child(2) {
+  opacity: 1;
+}
+
+#chat-area {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.container {
+  width: 100%;
+  max-width: inherit;
+}
+
+.carousel-control-next,
+  .carousel-control-prev /*, .carousel-indicators */ {
+  filter: invert(100%);
+}
