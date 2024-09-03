@@ -1,9 +1,7 @@
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI
-from langchain_core.chat_history import (
-    InMemoryChatMessageHistory,
-    HumanMessage, AIMessage
-)
+from langchain_core.chat_history import HumanMessage, AIMessage
+from tools.file_operations import read_prompt_from_file
 
 model = ChatOpenAI(model="gpt-3.5-turbo")
 
@@ -19,11 +17,13 @@ def get_message_placeholder(messages: list[dict[str, any]]):
 
 
 def general_chat_raven(messages: list[dict[str, any]]):
+    system_prompt = read_prompt_from_file('raven.md')
+
     prompt = ChatPromptTemplate.from_messages(
         [
             (
                 "system",
-                "You are a helpful assistant. Answer all questions to the best of your ability.",
+                system_prompt,
             ),
             MessagesPlaceholder(variable_name="messages"),
         ]
