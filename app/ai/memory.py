@@ -1,94 +1,109 @@
-from langchain_chroma import Chroma
-from langchain_openai import OpenAIEmbeddings
-from langchain_core.documents import Document
 import uuid
+from typing import List, Optional
 
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage
+from langchain_chroma import Chroma
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_core.documents import Document
+from langchain_core.messages import HumanMessage
+
 from tools.file_operations import read_prompt_from_file
+
+# Constants
+PERSIST_DIRECTORY = 'chroma_db'
+MODEL_NAME = "gpt-4o"
 
 # Initialize OpenAI embeddings
 embeddings = OpenAIEmbeddings()
 
 # Initialize Chroma vector store
-persist_directory = 'chroma_db'
+vectorstore = Chroma(persist_directory=PERSIST_DIRECTORY, embedding_function=embeddings)
 
-vectorstore = Chroma(persist_directory=persist_directory,
-                     embedding_function=embeddings)
+model = ChatOpenAI(model=MODEL_NAME)
 
-
-model = ChatOpenAI(model="gpt-4o")
-
-
-def process_searched_documents(inquery: str, documents: list[Document]):
+def process_searched_documents(inquery: str, documents: List[Document]) -> str:
+    """Process searched documents and generate a response."""
     print(f"Processing {len(documents)} documents for query: {inquery}")
-    if not documents or len(documents) == 0:
+    if not documents:
         return "I wasn't able to recall the information you requested."
-    content = ""
-    for i, doc in enumerate(documents):
-        content += f"Document {i + 1}:\n"
-        content += f"ID: {doc.metadata['id']}\n"
-        content += f"Content: {doc.page_content}\n\n"
+    
+    content = format_documents(documents)
+    full_prompt = create_full_prompt(inquery, content)
+    
+    try:
+        response = model.invoke([HumanMessage(content=full_prompt)])
+        return response.content
+    except Exception as e:
+        print(f"Error in processing documents: {e}")
+        return "An error occurred while processing your request."
+
+def format_documents(documents: List[Document]) -> str:
+    """Format the documents into a string."""
+    return "\n\n".join(
+        f"Document {i + 1}:\nID: {doc.metadata['id']}\nContent: {doc.page_content}"
+        for i, doc in enumerate(documents)
+    )
+
+def create_full_prompt(inquery: str, content: str) -> str:
+    """Create the full prompt for the AI model."""
     character_prompt = read_prompt_from_file('character.md')
     memory_prompt = read_prompt_from_file('memory.md')
-    full_prompt = character_prompt + "\n\n" + memory_prompt
-    # replace tools_prompt {user_prompt} with the command
-    full_prompt = full_prompt.replace('{user_prompt}', inquery)
-    full_prompt = full_prompt.replace('{documents}', content)
-    response = model.invoke([HumanMessage(content=full_prompt)])
-    return response.content
+    full_prompt = f"{character_prompt}\n\n{memory_prompt}"
+    return full_prompt.replace('{user_prompt}', inquery).replace('{documents}', content)
 
+def insert_document(data: str) -> str:
+    """Insert a new document into the vector store."""
+    doc_id = str(uuid.uuid4())
+    try:
+        vectorstore.add_documents(
+            documents=[Document(page_content=data, metadata={"id": doc_id})], ids=[doc_id]
+        )
+        return doc_id
+    except Exception as e:
+        print(f"Error inserting document: {e}")
+        return ""
 
-def insert_document(data):
-    id = str(uuid.uuid4())
-    vectorstore.add_documents(
-        documents=[Document(page_content=data, metadata={"id": id})], ids=[id])
-    return id
+def delete_data(query: str) -> str:
+    """Delete data based on a query."""
+    try:
+        res = delete_documents_by_query(query)
+        full_prompt = create_delete_prompt(query, str(res))
+        response = model.invoke([HumanMessage(content=full_prompt)])
+        return response.content
+    except Exception as e:
+        print(f"Error in delete_data: {e}")
+        return "An error occurred while deleting data."
 
+def save_data(query: str) -> str:
+    """Save data and generate a response."""
+    try:
+        res = insert_document(query)
+        full_prompt = create_save_prompt(query, res)
+        response = model.invoke([HumanMessage(content=full_prompt)])
+        return response.content
+    except Exception as e:
+        print(f"Error in save_data: {e}")
+        return "An error occurred while saving data."
 
-def delete_data(query):
-    res = delete_documents_by_query(query)
-    character_prompt = read_prompt_from_file('character.md')
-    delete_prompt = read_prompt_from_file('deletememory.md')
-    full_prompt = character_prompt + "\n\n" + delete_prompt
-    full_prompt = full_prompt.replace('{deleted_data}', query)
-    full_prompt = full_prompt.replace('{delete_result}', str(res))
-    response = model.invoke([HumanMessage(content=full_prompt)])
-    return response.content
-
-
-def save_data(query):
-    res = insert_document(query)
-    character_prompt = read_prompt_from_file('character.md')
-    save_prompt = read_prompt_from_file('savememory.md')
-    full_prompt = character_prompt + "\n\n" + save_prompt
-    full_prompt = full_prompt.replace('{save_data}', query)
-    full_prompt = full_prompt.replace('{save_result}', res)
-    response = model.invoke([HumanMessage(content=full_prompt)])
-    return response.content
-
-
-def search_data(query):
+def search_data(query: str) -> str:
+    """Search data based on a query."""
     return process_searched_documents(query, search_similarity(query))
 
-
-def search_similarity(query, k=3):
+def search_similarity(query: str, k: int = 3) -> List[Document]:
+    """Perform a similarity search."""
     return vectorstore.similarity_search(query, k)
 
-
-def search_similarity_threshold(query, k=3, threshold=0.5):
+def search_similarity_threshold(query: str, k: int = 3, threshold: float = 0.5) -> List[Document]:
+    """Perform a similarity search with a threshold."""
     return vectorstore.search(query, search_type="similarity_score_threshold", k=k, score_threshold=threshold)
 
-
-def search_max_rel(query, k=3):
+def search_max_rel(query: str, k: int = 3) -> List[Document]:
+    """Perform a max marginal relevance search."""
     return vectorstore.max_marginal_relevance_search(query, k)
 
-
-def delete_documents_by_query(query: str, threshold=0.1):
+def delete_documents_by_query(query: str, threshold: float = 0.1) -> int:
+    """Delete documents based on a query."""
     k = 100
-    tot = 0
+    total_deleted = 0
     try:
         while True:
             docs = search_similarity_threshold(query, k=k, threshold=threshold)
@@ -96,15 +111,31 @@ def delete_documents_by_query(query: str, threshold=0.1):
 
             if document_ids:
                 vectorstore.delete(ids=document_ids)
-                tot += len(document_ids)
+                total_deleted += len(document_ids)
 
             if len(document_ids) < k:
                 break
     except Exception as e:
         print(f"An error occurred during document deletion: {e}")
-    return tot
+    return total_deleted
 
+def delete_documents_by_ids(ids: List[str]) -> int:
+    """Delete documents by their IDs."""
+    try:
+        vectorstore.delete(ids=ids)
+        return len(ids)
+    except Exception as e:
+        print(f"Error deleting documents by IDs: {e}")
+        return 0
 
-def delete_documents_by_ids(ids: list[str]):
-    vectorstore.delete(ids=ids)
-    return len(ids)
+def create_delete_prompt(query: str, result: str) -> str:
+    """Create the prompt for delete operation."""
+    character_prompt = read_prompt_from_file('character.md')
+    delete_prompt = read_prompt_from_file('deletememory.md')
+    return f"{character_prompt}\n\n{delete_prompt}".replace('{deleted_data}', query).replace('{delete_result}', result)
+
+def create_save_prompt(query: str, result: str) -> str:
+    """Create the prompt for save operation."""
+    character_prompt = read_prompt_from_file('character.md')
+    save_prompt = read_prompt_from_file('savememory.md')
+    return f"{character_prompt}\n\n{save_prompt}".replace('{save_data}', query).replace('{save_result}', result)
