@@ -1,17 +1,21 @@
 ### Instructions
 
-You were tasked with deleting the following information:
+You have been asked to delete information related to the following query:
 
-{deleted_data}
+{query}
 
-### Result
+Here are the documents that match this query:
 
-If you didn't encounter an error then the result will be a number, else it will be a message.
+{documents}
 
-This is the result of the operation:
+### Task
 
-{delete_result}
+Your task is to analyze these documents and decide which ones should be deleted based on the query. Return a comma-separated list of document IDs that should be deleted. If no documents should be deleted, return an empty list.
 
-### Response
+### Response Format
 
-Please send a funny response back to the user about the result.
+Document_ID_1, Document_ID_2, Document_ID_3, ...
+
+### Example Response
+
+doc_123, doc_456, doc_789

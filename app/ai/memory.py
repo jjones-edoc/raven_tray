@@ -65,10 +65,26 @@ def insert_document(data: str) -> str:
 def delete_data(query: str) -> str:
     """Delete data based on a query."""
     try:
-        res = delete_documents_by_query(query)
-        full_prompt = create_delete_prompt(query, str(res))
+        # Search for relevant documents
+        docs = search_similarity(query)
+        
+        # Create the delete prompt with the found documents
+        full_prompt = create_delete_prompt(query, docs)
+        
+        # Get AI's response (list of IDs to delete)
         response = model.invoke([HumanMessage(content=full_prompt)])
-        return response.content
+        
+        # Parse the response to get the list of IDs
+        ids_to_delete = [id.strip() for id in response.content.split(',') if id.strip()]
+        
+        # Delete the specified documents
+        deleted_count = delete_documents_by_ids(ids_to_delete)
+        
+        # Create a response about the deletion
+        result_prompt = create_delete_result_prompt(query, deleted_count)
+        final_response = model.invoke([HumanMessage(content=result_prompt)])
+        
+        return final_response.content
     except Exception as e:
         print(f"Error in delete_data: {e}")
         return "An error occurred while deleting data."
@@ -128,11 +144,18 @@ def delete_documents_by_ids(ids: List[str]) -> int:
         print(f"Error deleting documents by IDs: {e}")
         return 0
 
-def create_delete_prompt(query: str, result: str) -> str:
+def create_delete_prompt(query: str, documents: List[Document]) -> str:
     """Create the prompt for delete operation."""
     character_prompt = read_prompt_from_file('character.md')
     delete_prompt = read_prompt_from_file('deletememory.md')
-    return f"{character_prompt}\n\n{delete_prompt}".replace('{deleted_data}', query).replace('{delete_result}', result)
+    formatted_docs = format_documents(documents)
+    return f"{character_prompt}\n\n{delete_prompt}".replace('{query}', query).replace('{documents}', formatted_docs)
+
+def create_delete_result_prompt(query: str, deleted_count: int) -> str:
+    """Create the prompt for delete result."""
+    character_prompt = read_prompt_from_file('character.md')
+    delete_result_prompt = read_prompt_from_file('deletememory_result.md')
+    return f"{character_prompt}\n\n{delete_result_prompt}".replace('{query}', query).replace('{deleted_count}', str(deleted_count))
 
 def create_save_prompt(query: str, result: str) -> str:
     """Create the prompt for save operation."""
