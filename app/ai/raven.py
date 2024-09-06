@@ -38,7 +38,6 @@ def respond(query: str) -> str:
     return clean_string(query)
 
 
-@log_ai_interaction
 def execute_command(command: str, inquiry: str) -> str:
     function_map = {
         "searchdata": search_data,
@@ -49,7 +48,6 @@ def execute_command(command: str, inquiry: str) -> str:
     }
 
     if command in function_map:
-        logger.info(f"Executing function {command}({inquiry})")
         return function_map[command](inquiry)
     else:
         logger.warning(f"Function {command} not recognized.")
@@ -58,6 +56,8 @@ def execute_command(command: str, inquiry: str) -> str:
 
 @log_ai_interaction
 def general_chat_raven(messages: List[Dict[str, Any]]) -> str:
+    logger.info(f"AI Interaction - Input: {messages}")
+    
     character_prompt = read_prompt_from_file('character.md')
     functions_prompt = read_prompt_from_file('functions.md')
 
@@ -76,17 +76,20 @@ def general_chat_raven(messages: List[Dict[str, Any]]) -> str:
 
     response = chain.invoke({"messages": formatted_messages})
     ai_response = response.content
-    logger.info(f"Initial response: {ai_response}")
+    logger.info(f"Initial AI response: {ai_response}")
 
     function_name, arguments = extract_function_call(ai_response)
 
     if function_name is None:
+        logger.info(f"AI Interaction - Output: {ai_response}")
         return ai_response
 
-    logger.info(f"Function name: {function_name}")
-    logger.info(f"Arguments: {arguments}")
+    logger.info(f"Extracted function: {function_name}({arguments})")
 
     if function_name:
-        ai_response = execute_command(function_name, arguments)
+        result = execute_command(function_name, arguments)
+        logger.info(f"Function {function_name} result: {result}")
+        ai_response = result
 
+    logger.info(f"AI Interaction - Output: {ai_response}")
     return ai_response
