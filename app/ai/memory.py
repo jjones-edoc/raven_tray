@@ -7,6 +7,7 @@ from langchain_core.documents import Document
 from langchain_core.messages import HumanMessage
 
 from tools.file_operations import read_prompt_from_file
+from tools.logging_utils import log_ai_interaction, logger
 
 # Constants
 PERSIST_DIRECTORY = 'chroma_db'
@@ -22,9 +23,10 @@ vectorstore = Chroma(persist_directory=PERSIST_DIRECTORY,
 model = ChatOpenAI(model=MODEL_NAME)
 
 
+@log_ai_interaction
 def process_searched_documents(inquery: str, documents: List[Document]) -> str:
     """Process searched documents and generate a response."""
-    print(f"Processing {len(documents)} documents for query: {inquery}")
+    logger.info(f"Processing {len(documents)} documents for query: {inquery}")
     if not documents:
         return "I wasn't able to recall the information you requested."
 
@@ -35,7 +37,7 @@ def process_searched_documents(inquery: str, documents: List[Document]) -> str:
         response = model.invoke([HumanMessage(content=full_prompt)])
         return response.content
     except Exception as e:
-        print(f"Error in processing documents: {e}")
+        logger.error(f"Error in processing documents: {e}")
         return "An error occurred while processing your request."
 
 
@@ -56,6 +58,7 @@ def create_full_prompt(inquery: str, content: str) -> str:
     return full_prompt.replace('{user_prompt}', inquery).replace('{documents}', content)
 
 
+@log_ai_interaction
 def insert_document(data: str) -> str:
     """Insert a new document into the vector store."""
     doc_id = str(uuid.uuid4())
@@ -65,16 +68,17 @@ def insert_document(data: str) -> str:
         )
         return doc_id
     except Exception as e:
-        print(f"Error inserting document: {e}")
+        logger.error(f"Error inserting document: {e}")
         return ""
 
 
+@log_ai_interaction
 def delete_data(query: str) -> str:
     """Delete data based on a query."""
     try:
         # Search for relevant documents
         docs = search_similarity(query)
-        print(f"Found {len(docs)} potential documents to delete.")
+        logger.info(f"Found {len(docs)} potential documents to delete.")
 
         # Create the delete prompt with the found documents
         full_prompt = create_delete_prompt(query, docs)
@@ -86,7 +90,7 @@ def delete_data(query: str) -> str:
         ids_to_delete = [id.strip()
                          for id in response.content.split(',') if id.strip()]
 
-        print(f"Deleting {len(ids_to_delete)} documents.")
+        logger.info(f"Deleting {len(ids_to_delete)} documents.")
 
         # Delete the specified documents
         deleted_count = delete_documents_by_ids(ids_to_delete)
@@ -97,10 +101,11 @@ def delete_data(query: str) -> str:
 
         return final_response.content
     except Exception as e:
-        print(f"Error in delete_data: {e}")
+        logger.error(f"Error in delete_data: {e}")
         return "An error occurred while deleting data."
 
 
+@log_ai_interaction
 def save_data(query: str) -> str:
     """Save data and generate a response."""
     try:
@@ -109,7 +114,7 @@ def save_data(query: str) -> str:
         response = model.invoke([HumanMessage(content=full_prompt)])
         return response.content
     except Exception as e:
-        print(f"Error in save_data: {e}")
+        logger.error(f"Error in save_data: {e}")
         return "An error occurred while saving data."
 
 
@@ -133,6 +138,7 @@ def search_max_rel(query: str, k: int = 3) -> List[Document]:
     return vectorstore.max_marginal_relevance_search(query, k)
 
 
+@log_ai_interaction
 def delete_documents_by_query(query: str, threshold: float = 0.1) -> int:
     """Delete documents based on a query."""
     k = 100
@@ -149,17 +155,18 @@ def delete_documents_by_query(query: str, threshold: float = 0.1) -> int:
             if len(document_ids) < k:
                 break
     except Exception as e:
-        print(f"An error occurred during document deletion: {e}")
+        logger.error(f"An error occurred during document deletion: {e}")
     return total_deleted
 
 
+@log_ai_interaction
 def delete_documents_by_ids(ids: List[str]) -> int:
     """Delete documents by their IDs."""
     try:
         vectorstore.delete(ids=ids)
         return len(ids)
     except Exception as e:
-        print(f"Error deleting documents by IDs: {e}")
+        logger.error(f"Error deleting documents by IDs: {e}")
         return 0
 
 

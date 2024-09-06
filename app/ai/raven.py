@@ -6,6 +6,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from tools.file_operations import read_prompt_from_file, extract_function_call, clean_string
+from tools.logging_utils import log_ai_interaction, logger
 from .memory import save_data, search_data, delete_data
 from .onlinesearch import perplexity_search
 
@@ -37,6 +38,7 @@ def respond(query: str) -> str:
     return clean_string(query)
 
 
+@log_ai_interaction
 def execute_command(command: str, inquiry: str) -> str:
     function_map = {
         "searchdata": search_data,
@@ -47,13 +49,14 @@ def execute_command(command: str, inquiry: str) -> str:
     }
 
     if command in function_map:
-        print(f"Executing function {command}({inquiry})")
+        logger.info(f"Executing function {command}({inquiry})")
         return function_map[command](inquiry)
     else:
-        print(f"Function {command} not recognized.")
+        logger.warning(f"Function {command} not recognized.")
         return f"Error: Function {command} not recognized."
 
 
+@log_ai_interaction
 def general_chat_raven(messages: List[Dict[str, Any]]) -> str:
     character_prompt = read_prompt_from_file('character.md')
     functions_prompt = read_prompt_from_file('functions.md')
@@ -73,15 +76,15 @@ def general_chat_raven(messages: List[Dict[str, Any]]) -> str:
 
     response = chain.invoke({"messages": formatted_messages})
     ai_response = response.content
-    print(f"Initial response: {ai_response}")
+    logger.info(f"Initial response: {ai_response}")
 
     function_name, arguments = extract_function_call(ai_response)
 
     if function_name is None:
         return ai_response
 
-    print(f"Function name: {function_name}")
-    print(f"Arguments: {arguments}")
+    logger.info(f"Function name: {function_name}")
+    logger.info(f"Arguments: {arguments}")
 
     if function_name:
         ai_response = execute_command(function_name, arguments)

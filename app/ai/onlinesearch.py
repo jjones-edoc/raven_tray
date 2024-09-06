@@ -1,7 +1,8 @@
 import os
 from openai import OpenAI
+from tools.logging_utils import log_ai_interaction, logger
 
-
+@log_ai_interaction
 def perplexity_search(query: str, model_name="llama-3.1-sonar-large-128k-online", api_key=None, base_url="https://api.perplexity.ai"):
     key = os.getenv("PERPLEXITY_API_KEY")
 
