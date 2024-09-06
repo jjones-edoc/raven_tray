@@ -38,6 +38,7 @@ def respond(query: str) -> str:
     return clean_string(query)
 
 
+@log_ai_interaction
 def execute_command(command: str, inquiry: str) -> str:
     function_map = {
         "searchdata": search_data,
@@ -57,7 +58,7 @@ def execute_command(command: str, inquiry: str) -> str:
 @log_ai_interaction
 def general_chat_raven(messages: List[Dict[str, Any]]) -> str:
     logger.info(f"AI Interaction - Input: {messages}")
-    
+
     character_prompt = read_prompt_from_file('character.md')
     functions_prompt = read_prompt_from_file('functions.md')
 
