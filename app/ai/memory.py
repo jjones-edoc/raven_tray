@@ -3,13 +3,42 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_core.documents import Document
 import uuid
 
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage
+from langchain_core.documents import Document
+from tools.file_operations import read_prompt_from_file
+
 # Initialize OpenAI embeddings
 embeddings = OpenAIEmbeddings()
 
 # Initialize Chroma vector store
 persist_directory = 'chroma_db'
+
 vectorstore = Chroma(persist_directory=persist_directory,
                      embedding_function=embeddings)
+
+
+model = ChatOpenAI(model="gpt-4o")
+
+
+def process_searched_documents(inquery: str, documents: list[Document]):
+    print(f"Processing {len(documents)} documents for query: {inquery}")
+    if not documents or len(documents) == 0:
+        return "I wasn't able to recall the information you requested."
+    content = ""
+    for i, doc in enumerate(documents):
+        content += f"Document {i + 1}:\n"
+        content += f"ID: {doc.metadata['id']}\n"
+        content += f"Content: {doc.page_content}\n\n"
+    character_prompt = read_prompt_from_file('character.md')
+    memory_prompt = read_prompt_from_file('memory.md')
+    full_prompt = character_prompt + "\n\n" + memory_prompt
+    # replace tools_prompt {user_prompt} with the command
+    full_prompt = full_prompt.replace('{user_prompt}', inquery)
+    full_prompt = full_prompt.replace('{documents}', content)
+    response = model.invoke([HumanMessage(content=full_prompt)])
+    return response.content
 
 
 def insert_document(data):
@@ -17,6 +46,32 @@ def insert_document(data):
     vectorstore.add_documents(
         documents=[Document(page_content=data, metadata={"id": id})], ids=[id])
     return id
+
+
+def delete_data(query):
+    res = delete_documents_by_query(query)
+    character_prompt = read_prompt_from_file('character.md')
+    delete_prompt = read_prompt_from_file('deletememory.md')
+    full_prompt = character_prompt + "\n\n" + delete_prompt
+    full_prompt = full_prompt.replace('{deleted_data}', query)
+    full_prompt = full_prompt.replace('{delete_result}', str(res))
+    response = model.invoke([HumanMessage(content=full_prompt)])
+    return response.content
+
+
+def save_data(query):
+    res = insert_document(query)
+    character_prompt = read_prompt_from_file('character.md')
+    save_prompt = read_prompt_from_file('savememory.md')
+    full_prompt = character_prompt + "\n\n" + save_prompt
+    full_prompt = full_prompt.replace('{save_data}', query)
+    full_prompt = full_prompt.replace('{save_result}', res)
+    response = model.invoke([HumanMessage(content=full_prompt)])
+    return response.content
+
+
+def search_data(query):
+    return process_searched_documents(query, search_similarity(query))
 
 
 def search_similarity(query, k=3):

@@ -10,6 +10,7 @@ from .memory import save_data, search_data, delete_data
 
 model = ChatOpenAI(model="gpt-4o")
 
+
 def get_message_placeholder(messages: List[Dict[str, Any]]) -> List[Any]:
     message_history = []
     for message in messages:
@@ -19,12 +20,15 @@ def get_message_placeholder(messages: List[Dict[str, Any]]) -> List[Any]:
             message_history.append(AIMessage(message['content']))
     return message_history
 
+
 def online_search(query: str) -> str:
     # TODO: Implement web search functionality
     return "I'm sorry, I'm not able to search the web at this time."
 
+
 def respond(query: str) -> str:
     return clean_string(query)
+
 
 def execute_command(command: str, inquiry: str) -> str:
     function_map = {
@@ -41,6 +45,7 @@ def execute_command(command: str, inquiry: str) -> str:
     else:
         print(f"Function {command} not recognized.")
         return f"Error: Function {command} not recognized."
+
 
 def general_chat_raven(messages: List[Dict[str, Any]]) -> str:
     character_prompt = read_prompt_from_file('character.md')
@@ -62,7 +67,7 @@ def general_chat_raven(messages: List[Dict[str, Any]]) -> str:
     response = chain.invoke({"messages": formatted_messages})
     ai_response = response.content
     print(f"Initial response: {ai_response}")
-    
+
     function_name, arguments = extract_function_call(ai_response)
 
     if function_name is None:
@@ -70,7 +75,7 @@ def general_chat_raven(messages: List[Dict[str, Any]]) -> str:
 
     print(f"Function name: {function_name}")
     print(f"Arguments: {arguments}")
-    
+
     if function_name:
         ai_response = execute_command(function_name, arguments)
 
