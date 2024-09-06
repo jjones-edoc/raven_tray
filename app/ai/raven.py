@@ -7,6 +7,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from tools.file_operations import read_prompt_from_file, extract_function_call, clean_string
 from .memory import save_data, search_data, delete_data
+from .onlinesearch import perplexity_search
 
 model = ChatOpenAI(model="gpt-4o")
 
@@ -22,8 +23,14 @@ def get_message_placeholder(messages: List[Dict[str, Any]]) -> List[Any]:
 
 
 def online_search(query: str) -> str:
-    # TODO: Implement web search functionality
-    return "I'm sorry, I'm not able to search the web at this time."
+    online_results = perplexity_search(query)
+    character_prompt = read_prompt_from_file('character.md')
+    online_prompt = read_prompt_from_file('onlinesearch.md')
+    full_prompt = f"{character_prompt}\n\n{online_prompt}"
+    full_prompt = full_prompt.replace('{user_prompt}', query)
+    full_prompt = full_prompt.replace('{online_results}', online_results)
+    response = model.invoke([HumanMessage(content=full_prompt)])
+    return response.content
 
 
 def respond(query: str) -> str:
