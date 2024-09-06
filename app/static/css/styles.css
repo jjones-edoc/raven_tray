@@ -65,6 +65,31 @@ body {
   padding: 10px;
   line-height: 1.4;
   width: fit-content;
+  max-width: 80%;
+}
+
+.message p {
+  margin-bottom: 0.5em;
+}
+
+.message ul, .message ol {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  padding-left: 20px;
+}
+
+.message pre {
+  background-color: #f4f4f4;
+  padding: 10px;
+  border-radius: 5px;
+  overflow-x: auto;
+}
+
+.message code {
+  font-family: monospace;
+  background-color: #f4f4f4;
+  padding: 2px 4px;
+  border-radius: 3px;
 }
 
 .human {

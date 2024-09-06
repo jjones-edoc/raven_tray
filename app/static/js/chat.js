@@ -6,7 +6,8 @@ const initializeChat = (messages, channelId) => {
     socket.emit("join", { channel_id: channelId });
 
     const appendMessageToChat = (type, content) => {
-      chatArea.append(`<div class="message ${type}">${content}</div>`);
+      const sanitizedContent = DOMPurify.sanitize(marked.parse(content));
+      chatArea.append(`<div class="message ${type}">${sanitizedContent}</div>`);
       // Scroll to the bottom after appending new message
       chatArea.scrollTop(chatArea[0].scrollHeight);
     };
