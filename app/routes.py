@@ -189,6 +189,37 @@ def handle_get_sub_tasks(data):
          'name': parentTask['info'], 'tasks': formatted_tasks}})
 
 
+@socketio.on('flip_tasks')
+def handle_flip_tasks(data):
+    task_id1 = data.get('id1')
+    task_id2 = data.get('id2')
+    task1 = get_task(task_id1)
+    task2 = get_task(task_id2)
+    update_task(task_id1, info=task2['info'], completed=task2['completed'],
+                dueDate=task2['dueDate'], parentID=task2['parentID'])
+    update_task(task_id2, info=task1['info'], completed=task1['completed'],
+                dueDate=task1['dueDate'], parentID=task1['parentID'])
+    taskName = "My Tasks"
+    if task1['parentID'] is None:
+        tasks = get_all_tasks()
+    else:
+        parentTask = get_task(task1['parentID'])
+        tasks = get_subtasks(task1['parentID'])
+        taskName = parentTask['info']
+    formatted_tasks = [
+        {
+            'id': task['id'],
+            'info': task['info'],
+            'completed': bool(task['completed']),
+            'dueDate': task['dueDate'],
+            'parentID': task['parentID'],
+        }
+        for task in tasks
+    ]
+    emit('tasks_data', {'taskdata': {
+         'name': taskName, 'tasks': formatted_tasks}})
+
+
 if __name__ == '__main__':
     init_db()  # Initialize the database
     socketio.run(app, debug=True)

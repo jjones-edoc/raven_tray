@@ -1,12 +1,12 @@
 // task.js
 
 class TaskList {
-  constructor(config) {
-    this.container = config.container; // HTML element to render into
-    this.taskData = config.taskData; // Initial tasks data
+  constructor({ container, taskData, socket }) {
+    this.container = container; // HTML element to render into
+    this.taskData = taskData; // Initial tasks data
     this.parentID = null; // Tracks current parent task for subtasks
     this.currentTaskIdForDate = null; // Tracks task ID for due date editing
-    this.socket = config.socket; // Socket.io instance
+    this.socket = socket; // Socket.io instance
 
     this.init();
   }
@@ -14,34 +14,45 @@ class TaskList {
   init() {
     this.render();
     this.setupEventListeners();
+    this.setupSocketListeners();
   }
 
   setupEventListeners() {
-    // Add Task Button
-    const addTaskBtn = this.container.querySelector(".add-task-btn");
-    addTaskBtn.addEventListener("click", () => this.handleAddTask());
+    const { addTaskBtn, backBtn, closeBtn, sendMessageBtn, chatInput, saveDateBtn, clearDateBtn } = this.getCommonElements();
 
-    // Back Button
-    const backBtn = this.container.querySelector(".back-btn");
-    backBtn.addEventListener("click", () => this.handleGoBack());
+    addTaskBtn.addEventListener("click", this.handleAddTask);
+    backBtn.addEventListener("click", this.handleGoBack);
+    closeBtn.addEventListener("click", this.handleClose);
 
-    // Close Button
-    const closeBtn = this.container.querySelector(".close-card-btn");
-    closeBtn.addEventListener("click", () => this.handleClose());
-
-    // Chat Send Button
-    const sendMessageBtn = this.container.querySelector(".send-message-btn");
-    const chatInput = this.container.querySelector(".chat-input");
-    sendMessageBtn.addEventListener("click", () => this.handleSendMessage());
+    sendMessageBtn.addEventListener("click", this.handleSendMessage);
     chatInput.addEventListener("keypress", (e) => {
       if (e.key === "Enter") this.handleSendMessage();
     });
 
-    // Modal Buttons
-    const saveDateBtn = this.container.querySelector(".save-date-btn");
-    const clearDateBtn = this.container.querySelector(".clear-date-btn");
-    saveDateBtn.addEventListener("click", () => this.handleSaveDueDate());
-    clearDateBtn.addEventListener("click", () => this.handleClearDueDate());
+    saveDateBtn.addEventListener("click", this.handleSaveDueDate);
+    clearDateBtn.addEventListener("click", this.handleClearDueDate);
+  }
+
+  setupSocketListeners() {
+    // Listen for task updates from the server
+    this.socket.on("tasks_updated", (updatedTaskData) => {
+      this.taskData = updatedTaskData;
+      this.renderTasks(this.taskData.tasks);
+      this.toggleBackButton();
+      this.updateTaskTitle();
+    });
+  }
+
+  getCommonElements() {
+    return {
+      addTaskBtn: this.container.querySelector(".add-task-btn"),
+      backBtn: this.container.querySelector(".back-btn"),
+      closeBtn: this.container.querySelector(".close-card-btn"),
+      sendMessageBtn: this.container.querySelector(".send-message-btn"),
+      chatInput: this.container.querySelector(".chat-input"),
+      saveDateBtn: this.container.querySelector(".save-date-btn"),
+      clearDateBtn: this.container.querySelector(".clear-date-btn"),
+    };
   }
 
   render() {
@@ -66,9 +77,7 @@ class TaskList {
           <ul class="list-group task-list"></ul>
   
           <!-- Chatbot interaction -->
-          <div class="chat-container d-none">
-            <!-- Messages will appear here -->
-          </div>
+          <div class="chat-container d-none"></div>
   
           <div class="chat-input-container">
             <input type="text" class="form-control chat-input me-1" placeholder="Type a message..." />
@@ -96,6 +105,13 @@ class TaskList {
         </div>
       `;
 
+    this.cacheDOMElements();
+    this.initializePlugins();
+    this.renderTasks(this.taskData.tasks);
+    this.toggleBackButton();
+  }
+
+  cacheDOMElements() {
     this.taskListElement = this.container.querySelector(".task-list");
     this.chatContainer = this.container.querySelector(".chat-container");
     this.chatInput = this.container.querySelector(".chat-input");
@@ -104,7 +120,9 @@ class TaskList {
     this.taskTitleElement = this.container.querySelector(".task-title");
     this.backBtn = this.container.querySelector(".back-btn");
     this.addTaskBtn = this.container.querySelector(".add-task-btn");
+  }
 
+  initializePlugins() {
     // Initialize Flatpickr
     this.fp = flatpickr(this.dueDateInput, {
       enableTime: true,
@@ -120,21 +138,20 @@ class TaskList {
       animation: 150,
       group: "tasks",
       ghostClass: "sortable-ghost",
-      onEnd: (evt) => this.updateTaskOrder(evt),
+      onEnd: this.updateTaskOrder,
     });
-
-    this.renderTasks(this.taskData.tasks);
   }
 
-  updateTask(taskId, updatedData) {
-    const task = this.findTaskById(taskId, this.taskData.tasks);
-    if (task) {
-      this.socket.emit("update_task", { id: taskId, ...updatedData });
+  toggleBackButton() {
+    if (this.parentID !== null) {
+      this.backBtn.classList.remove("d-none");
+    } else {
+      this.backBtn.classList.add("d-none");
     }
   }
 
-  deleteTask(taskId) {
-    this.socket.emit("delete_task", { id: taskId });
+  updateTaskTitle() {
+    this.taskTitleElement.textContent = this.taskData.name;
   }
 
   renderTasks(tasks) {
@@ -142,111 +159,135 @@ class TaskList {
 
     tasks.forEach((task) => {
       this.parentID = task.parentID;
-      const taskItem = document.createElement("li");
-      taskItem.className = "list-group-item w-100 ps-2";
-      taskItem.dataset.id = task.id;
-
-      const taskContent = document.createElement("div");
-      taskContent.className = "task-content d-flex align-items-center justify-content-between w-100";
-
-      const leftContainer = document.createElement("div");
-      leftContainer.className = "d-flex align-items-center w-100";
-
-      const dragHandle = document.createElement("span");
-      dragHandle.className = "drag-handle me-2";
-      dragHandle.innerHTML = '<i class="fas fa-grip-lines-vertical"></i>';
-      dragHandle.style.cursor = "grab";
-
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.className = "form-check-input me-2";
-      checkbox.checked = task.completed;
-      checkbox.addEventListener("change", (e) => this.toggleComplete(e, task.id));
-
-      const taskInput = document.createElement("input");
-      taskInput.type = "text";
-      taskInput.className = "form-control me-2 w-100";
-      taskInput.value = task.info;
-      taskInput.style.flexGrow = "1";
-      taskInput.style.minWidth = "0";
-      taskInput.addEventListener("change", (e) => this.updateTaskName(task.id, e.target.value));
-
-      leftContainer.appendChild(dragHandle);
-      leftContainer.appendChild(checkbox);
-      leftContainer.appendChild(taskInput);
-
-      const taskActions = document.createElement("div");
-      taskActions.className = "task-actions d-flex gap-2";
-
-      // Date Icon or Due Date Badge
-      if (task.dueDate) {
-        const dueDateBadge = document.createElement("span");
-        dueDateBadge.className = "badge bg-info text-dark due-date-badge";
-        dueDateBadge.textContent = this.formatDate(task.dueDate);
-        dueDateBadge.title = "Click to edit due date";
-        dueDateBadge.addEventListener("click", () => this.openDatePicker(task.id));
-        taskActions.appendChild(dueDateBadge);
-      } else {
-        const dateBtn = document.createElement("button");
-        dateBtn.className = "icon-btn";
-        dateBtn.title = "Set Due Date";
-        dateBtn.innerHTML = '<i class="fas fa-calendar-alt"></i>';
-        dateBtn.addEventListener("click", () => this.openDatePicker(task.id));
-        taskActions.appendChild(dateBtn);
-      }
-
-      // Subtasks and Delete Buttons
-      const viewSubtasksBtn = document.createElement("button");
-      viewSubtasksBtn.className = "btn btn-sm btn-success";
-      viewSubtasksBtn.title = "View Subtasks";
-      viewSubtasksBtn.innerHTML = '<i class="fas fa-arrow-right"></i>';
-      viewSubtasksBtn.addEventListener("click", () => this.viewSubtasks(task.id));
-
-      const deleteBtn = document.createElement("button");
-      deleteBtn.className = "btn btn-sm btn-danger";
-      deleteBtn.title = "Delete Task";
-      deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
-      deleteBtn.addEventListener("click", () => this.deleteTask(task.id));
-
-      taskActions.appendChild(viewSubtasksBtn);
-      taskActions.appendChild(deleteBtn);
-
-      taskContent.appendChild(leftContainer);
-      taskContent.appendChild(taskActions);
-
-      taskItem.appendChild(taskContent);
+      const taskItem = this.createTaskElement(task);
       this.taskListElement.appendChild(taskItem);
     });
-    if (this.parentID) {
-      this.container.querySelector(".back-btn").classList.remove("d-none");
-    } else {
-      this.container.querySelector(".back-btn").classList.add("d-none");
-    }
+
+    this.toggleBackButton();
   }
 
-  handleAddTask() {
-    this.socket.emit("create_task", {
-      id: new Date().getTime(),
+  createTaskElement(task) {
+    const taskItem = document.createElement("li");
+    taskItem.className = "list-group-item w-100 ps-2";
+    taskItem.dataset.id = task.id;
+
+    const taskContent = document.createElement("div");
+    taskContent.className = "task-content d-flex align-items-center justify-content-between w-100";
+
+    // Left Container: Drag Handle, Checkbox, Task Input
+    const leftContainer = document.createElement("div");
+    leftContainer.className = "d-flex align-items-center w-100";
+
+    const dragHandle = document.createElement("span");
+    dragHandle.className = "drag-handle me-2";
+    dragHandle.innerHTML = '<i class="fas fa-grip-lines-vertical"></i>';
+    dragHandle.style.cursor = "grab";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.className = "form-check-input me-2";
+    checkbox.checked = task.completed;
+    checkbox.addEventListener("change", (e) => this.toggleComplete(e, task.id));
+
+    const taskInput = document.createElement("input");
+    taskInput.type = "text";
+    taskInput.className = "form-control me-2 w-100";
+    taskInput.value = task.info;
+    taskInput.style.flexGrow = "1";
+    taskInput.style.minWidth = "0";
+    taskInput.addEventListener("change", (e) => this.updateTaskName(task.id, e.target.value));
+
+    leftContainer.append(dragHandle, checkbox, taskInput);
+
+    // Right Container: Due Date, Subtasks, Delete
+    const taskActions = document.createElement("div");
+    taskActions.className = "task-actions d-flex gap-2";
+
+    // Due Date Badge or Button
+    if (task.dueDate) {
+      const dueDateBadge = this.createDueDateBadge(task);
+      taskActions.appendChild(dueDateBadge);
+    } else {
+      const dateBtn = this.createDateButton(task.id);
+      taskActions.appendChild(dateBtn);
+    }
+
+    // Subtasks Button
+    const viewSubtasksBtn = this.createSubtasksButton(task.id);
+    taskActions.appendChild(viewSubtasksBtn);
+
+    // Delete Button
+    const deleteBtn = this.createDeleteButton(task.id);
+    taskActions.appendChild(deleteBtn);
+
+    taskContent.append(leftContainer, taskActions);
+    taskItem.appendChild(taskContent);
+
+    return taskItem;
+  }
+
+  createDueDateBadge(task) {
+    const dueDateBadge = document.createElement("span");
+    dueDateBadge.className = "badge bg-info text-dark due-date-badge";
+    dueDateBadge.textContent = this.formatDate(task.dueDate);
+    dueDateBadge.title = "Click to edit due date";
+    dueDateBadge.style.cursor = "pointer";
+    dueDateBadge.addEventListener("click", () => this.openDatePicker(task.id));
+    return dueDateBadge;
+  }
+
+  createDateButton(taskId) {
+    const dateBtn = document.createElement("button");
+    dateBtn.className = "icon-btn";
+    dateBtn.title = "Set Due Date";
+    dateBtn.innerHTML = '<i class="fas fa-calendar-alt"></i>';
+    dateBtn.style.cursor = "pointer";
+    dateBtn.addEventListener("click", () => this.openDatePicker(taskId));
+    return dateBtn;
+  }
+
+  createSubtasksButton(taskId) {
+    const viewSubtasksBtn = document.createElement("button");
+    viewSubtasksBtn.className = "btn btn-sm btn-success";
+    viewSubtasksBtn.title = "View Subtasks";
+    viewSubtasksBtn.innerHTML = '<i class="fas fa-arrow-right"></i>';
+    viewSubtasksBtn.addEventListener("click", () => this.viewSubtasks(taskId));
+    return viewSubtasksBtn;
+  }
+
+  createDeleteButton(taskId) {
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "btn btn-sm btn-danger";
+    deleteBtn.title = "Delete Task";
+    deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+    deleteBtn.style.cursor = "pointer";
+    deleteBtn.addEventListener("click", () => this.deleteTask(taskId));
+    return deleteBtn;
+  }
+
+  handleAddTask = () => {
+    const newTask = {
+      id: Date.now(),
       info: "New Task",
       completed: false,
       dueDate: null,
-      parentID: this.parentID ? this.parentID : null,
-    });
-  }
+      parentID: this.parentID, // Assign current parentID if any
+    };
+    this.socket.emit("create_task", newTask);
+  };
 
-  handleGoBack() {
-    if (this.parentID) {
-      this.socket.emit("get_parent_tasks", { parentID: this.parentID });
-    }
-  }
+  handleGoBack = () => {
+    if (this.parentID === null) return; // Already at top-level
+    this.socket.emit("get_parent_tasks", { parentID: this.parentID });
+  };
 
-  handleClose() {
+  handleClose = () => {
     this.container.style.display = "none";
-  }
+  };
 
-  handleSendMessage() {
+  handleSendMessage = () => {
     const message = this.chatInput.value.trim();
-    if (message === "") return;
+    if (!message) return;
 
     this.displayMessage(message, "user-message");
     this.chatInput.value = "";
@@ -256,10 +297,12 @@ class TaskList {
     }
 
     // Call the external AI message handler
-    this.onMessageAI(message, (aiResponse) => {
-      this.displayMessage(aiResponse, "ai-message");
-    });
-  }
+    if (typeof this.onMessageAI === "function") {
+      this.onMessageAI(message, (aiResponse) => {
+        this.displayMessage(aiResponse, "ai-message");
+      });
+    }
+  };
 
   displayMessage(message, className) {
     const messageDiv = document.createElement("div");
@@ -269,14 +312,14 @@ class TaskList {
     this.chatContainer.scrollTop = this.chatContainer.scrollHeight;
   }
 
-  viewSubtasks(taskId) {
+  viewSubtasks = (taskId) => {
     this.socket.emit("get_sub_tasks", { parentID: taskId });
-  }
+  };
 
-  toggleComplete(event, taskId) {
+  toggleComplete = (event, taskId) => {
     const completed = event.target.checked;
     this.updateTask(taskId, { completed });
-  }
+  };
 
   updateTaskName(taskId, newName) {
     this.updateTask(taskId, { info: newName });
@@ -293,20 +336,28 @@ class TaskList {
     this.datePickerModal.show();
   }
 
-  handleSaveDueDate() {
+  handleSaveDueDate = () => {
     const selectedDate = this.dueDateInput.value;
     if (this.currentTaskIdForDate !== null) {
       const updatedData = selectedDate ? { dueDate: new Date(selectedDate).toISOString() } : { dueDate: null };
       this.updateTask(this.currentTaskIdForDate, updatedData);
     }
     this.datePickerModal.hide();
-  }
+  };
 
-  handleClearDueDate() {
+  handleClearDueDate = () => {
     if (this.currentTaskIdForDate !== null) {
       this.updateTask(this.currentTaskIdForDate, { dueDate: null });
     }
     this.datePickerModal.hide();
+  };
+
+  updateTask(taskId, updatedData) {
+    this.socket.emit("update_task", { id: taskId, ...updatedData });
+  }
+
+  deleteTask(taskId) {
+    this.socket.emit("delete_task", { id: taskId });
   }
 
   formatDate(dateString) {
@@ -321,8 +372,8 @@ class TaskList {
     return date.toLocaleDateString(undefined, options);
   }
 
-  findTaskById(taskId, taskArray) {
-    for (let task of taskArray) {
+  findTaskById(taskId, tasks) {
+    for (const task of tasks) {
       if (task.id === taskId) return task;
       if (task.subtasks && task.subtasks.length > 0) {
         const found = this.findTaskById(taskId, task.subtasks);
@@ -332,26 +383,15 @@ class TaskList {
     return null;
   }
 
-  updateTaskOrder(evt) {
-    const movedTaskId = parseInt(evt.item.dataset.id, 10);
+  updateTaskOrder = (evt) => {
+    const movedTaskId = Number(evt.item.dataset.id);
     const newIndex = evt.newIndex;
 
-    let currentTasks = this.taskData.tasks;
+    const currentTasks = [...this.taskData.tasks];
+    const movedTaskIndex = currentTasks.findIndex((task) => task.id === movedTaskId);
+    if (movedTaskIndex === -1) return;
 
-    // Remove the task from its current position
-    const movedTask = currentTasks.find((task) => task.id === movedTaskId);
-    currentTasks = currentTasks.filter((task) => task.id !== movedTaskId);
-
-    // Insert the task at the new position
-    currentTasks.splice(newIndex, 0, movedTask);
-
-    // Update the tasks array
-    this.taskData.tasks = currentTasks;
-
-    this.renderTasks(this.taskData.tasks);
-  }
+    const [movedTask] = currentTasks.splice(movedTaskIndex, 1);
+    this.socket.emit("flip_tasks", { id1: movedTaskId, id2: currentTasks[newIndex].id });
+  };
 }
-
-// Export the TaskList class if using modules
-// Uncomment the line below if using a module system
-// export default TaskList;
