@@ -7,7 +7,7 @@ from langchain_core.documents import Document
 from langchain_core.messages import HumanMessage
 
 from tools.file_operations import read_prompt_from_file
-from tools.logging_utils import log_ai_interaction, logger
+from tools.logging_utils import logger
 
 # Constants
 PERSIST_DIRECTORY = 'chroma_db'
@@ -23,7 +23,6 @@ vectorstore = Chroma(persist_directory=PERSIST_DIRECTORY,
 model = ChatOpenAI(model=MODEL_NAME)
 
 
-@log_ai_interaction
 def process_searched_documents(inquery: str, documents: List[Document]) -> str:
     """Process searched documents and generate a response."""
     logger.info(f"Processing {len(documents)} documents for query: {inquery}")
@@ -35,6 +34,7 @@ def process_searched_documents(inquery: str, documents: List[Document]) -> str:
 
     try:
         response = model.invoke([HumanMessage(content=full_prompt)])
+        logger.debug(f"AI response: {response.content}")
         return response.content
     except Exception as e:
         logger.error(f"Error in processing documents: {e}")
@@ -58,7 +58,6 @@ def create_full_prompt(inquery: str, content: str) -> str:
     return full_prompt.replace('{user_prompt}', inquery).replace('{documents}', content)
 
 
-@log_ai_interaction
 def insert_document(data: str) -> str:
     """Insert a new document into the vector store."""
     doc_id = str(uuid.uuid4())
@@ -66,13 +65,13 @@ def insert_document(data: str) -> str:
         vectorstore.add_documents(
             documents=[Document(page_content=data, metadata={"id": doc_id})], ids=[doc_id]
         )
+        logger.info(f"Inserted document with ID: {doc_id}")
         return doc_id
     except Exception as e:
         logger.error(f"Error inserting document: {e}")
         return ""
 
 
-@log_ai_interaction
 def delete_data(query: str) -> str:
     """Delete data based on a query."""
     try:
@@ -98,6 +97,7 @@ def delete_data(query: str) -> str:
         # Create a response about the deletion
         result_prompt = create_delete_result_prompt(query, deleted_count)
         final_response = model.invoke([HumanMessage(content=result_prompt)])
+        logger.info(f"Final response: {final_response.content}")
 
         return final_response.content
     except Exception as e:
@@ -105,13 +105,13 @@ def delete_data(query: str) -> str:
         return "An error occurred while deleting data."
 
 
-@log_ai_interaction
 def save_data(query: str) -> str:
     """Save data and generate a response."""
     try:
         res = insert_document(query)
         full_prompt = create_save_prompt(query, res)
         response = model.invoke([HumanMessage(content=full_prompt)])
+        logger.debug(f"AI response: {response.content}")
         return response.content
     except Exception as e:
         logger.error(f"Error in save_data: {e}")
@@ -138,19 +138,21 @@ def search_max_rel(query: str, k: int = 3) -> List[Document]:
     return vectorstore.max_marginal_relevance_search(query, k)
 
 
-@log_ai_interaction
 def delete_documents_by_query(query: str, threshold: float = 0.1) -> int:
     """Delete documents based on a query."""
     k = 100
     total_deleted = 0
     try:
         while True:
+            logger.info(f"Searching for documents to delete with threshold {
+                        threshold}...")
             docs = search_similarity_threshold(query, k=k, threshold=threshold)
             document_ids = [result.metadata["id"] for result in docs]
 
             if document_ids:
                 vectorstore.delete(ids=document_ids)
                 total_deleted += len(document_ids)
+                logger.info(f"Deleted {len(document_ids)} documents.")
 
             if len(document_ids) < k:
                 break
@@ -159,10 +161,10 @@ def delete_documents_by_query(query: str, threshold: float = 0.1) -> int:
     return total_deleted
 
 
-@log_ai_interaction
 def delete_documents_by_ids(ids: List[str]) -> int:
     """Delete documents by their IDs."""
     try:
+        logger.debug(f"Deleting documents by IDs: {ids}")
         vectorstore.delete(ids=ids)
         return len(ids)
     except Exception as e:

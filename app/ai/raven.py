@@ -6,7 +6,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from tools.file_operations import read_prompt_from_file, extract_function_call, clean_string
-from tools.logging_utils import log_ai_interaction, logger
+from tools.logging_utils import logger
 from .memory import save_data, search_data, delete_data
 from .onlinesearch import perplexity_search
 
@@ -38,7 +38,6 @@ def respond(query: str) -> str:
     return clean_string(query)
 
 
-@log_ai_interaction
 def execute_command(command: str, inquiry: str) -> str:
     function_map = {
         "searchdata": search_data,
@@ -49,13 +48,13 @@ def execute_command(command: str, inquiry: str) -> str:
     }
 
     if command in function_map:
+        logger.debug(f"Executing function: {command}")
         return function_map[command](inquiry)
     else:
         logger.warning(f"Function {command} not recognized.")
         return f"Error: Function {command} not recognized."
 
 
-@log_ai_interaction
 def general_chat_raven(messages: List[Dict[str, Any]]) -> str:
     logger.info(f"AI Interaction - Input: {messages}")
 
