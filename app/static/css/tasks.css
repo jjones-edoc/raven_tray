@@ -1,0 +1,108 @@
+/* task.css */
+
+/* General Styles */
+.task-card {
+  position: relative;
+  padding: 20px;
+  border-radius: 10px;
+  background-color: #f8f9fa;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0 10px;
+}
+
+.icon-btn:hover {
+  color: #0d6efd;
+}
+
+.close-card-btn:hover {
+  color: #dc3545;
+}
+
+.d-none {
+  display: none;
+}
+
+.task-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.task-content {
+  flex-grow: 1;
+  margin-right: 10px;
+  display: flex;
+  align-items: center;
+}
+
+.drag-handle {
+  padding-left: 0;
+  margin-left: 0;
+  cursor: grab;
+}
+
+.task-list {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.due-date-badge {
+  cursor: pointer;
+}
+
+/* Chatbot styles */
+.chat-container {
+  margin-top: 20px;
+  max-height: 600px; /* Increased height from 500px to 600px */
+  overflow-y: auto;
+  padding: 10px;
+  background-color: #f1f1f1;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.chat-message {
+  margin-bottom: 10px;
+}
+
+.user-message {
+  text-align: right;
+  font-weight: bold;
+  color: #007bff;
+}
+
+.ai-message {
+  text-align: left;
+  font-style: italic;
+  color: #6c757d;
+}
+
+.chat-input-container {
+  display: flex;
+  margin-top: 10px;
+}
+
+.chat-input {
+  flex-grow: 1;
+  padding: 5px;
+}
+
+/* Modal Styles */
+.date-picker-modal .modal-header,
+.date-picker-modal .modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}

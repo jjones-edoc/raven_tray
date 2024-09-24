@@ -1,3 +1,5 @@
+var ActiveTaskList = null;
+
 const initializeChat = (messages, channelId) => {
   $(document).ready(() => {
     const socket = io();
@@ -33,6 +35,38 @@ const initializeChat = (messages, channelId) => {
         default:
           console.log("Unrecognized type", type);
       }
+    });
+
+    socket.on("tasks_data", (data) => {
+      //create a new element that will contain the tasks and be appended to the chat
+      if (ActiveTaskList) {
+        ActiveTaskList.container.remove();
+      }
+      const tasksDiv = document.createElement("div");
+      chatArea.append(tasksDiv);
+      ActiveTaskList = new TaskList({
+        taskData: data.taskdata,
+        container: tasksDiv,
+        socket: socket,
+      });
+    });
+
+    socket.on("task_created", (data) => {
+      const task = data.task;
+      ActiveTaskList.taskData.tasks = ActiveTaskList.taskData.tasks.concat(task);
+      ActiveTaskList.renderTasks(ActiveTaskList.taskData.tasks);
+    });
+
+    socket.on("task_updated", (data) => {
+      const task = data.task;
+      const index = ActiveTaskList.taskData.tasks.findIndex((t) => t.id === task.id);
+      ActiveTaskList.taskData.tasks[index] = task;
+      ActiveTaskList.renderTasks(ActiveTaskList.taskData.tasks);
+    });
+
+    socket.on("task_deleted", (data) => {
+      ActiveTaskList.taskData.tasks = ActiveTaskList.taskData.tasks.filter((t) => t.id !== data.id);
+      ActiveTaskList.renderTasks(ActiveTaskList.taskData.tasks);
     });
 
     const sendMessage = () => {

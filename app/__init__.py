@@ -1,3 +1,4 @@
+# __init__.py
 from flask import Flask
 from flask_socketio import SocketIO
 from .db import init_db
