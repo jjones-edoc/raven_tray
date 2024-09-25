@@ -192,7 +192,7 @@ class TaskList {
     const taskInput = document.createElement("input");
     taskInput.type = "text";
     taskInput.className = "form-control me-2 w-100";
-    taskInput.value = task.info;
+    taskInput.value = task.title;
     taskInput.style.flexGrow = "1";
     taskInput.style.minWidth = "0";
     taskInput.addEventListener("change", (e) => this.updateTaskName(task.id, e.target.value));
@@ -268,7 +268,8 @@ class TaskList {
   handleAddTask = () => {
     const newTask = {
       id: Date.now(),
-      info: "New Task",
+      title: "New Task",
+      description: "",
       completed: false,
       dueDate: null,
       parentID: this.parentID, // Assign current parentID if any
@@ -322,7 +323,7 @@ class TaskList {
   };
 
   updateTaskName(taskId, newName) {
-    this.updateTask(taskId, { info: newName });
+    this.updateTask(taskId, { title: newName });
   }
 
   openDatePicker(taskId) {

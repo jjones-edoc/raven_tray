@@ -25,7 +25,8 @@ def init_db():
     c.execute('''
         CREATE TABLE IF NOT EXISTS tasks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            info TEXT NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT,  
             completed BOOLEAN NOT NULL DEFAULT 0,
             dueDate TEXT,
             parentID INTEGER,
@@ -77,13 +78,13 @@ def clear_message_history(channel_id=None):
 # Tasks Functions
 
 
-def create_task(info, completed=False, dueDate=None, parentID=None):
+def create_task(title, description='', completed=False, dueDate=None, parentID=None):
     conn = get_db_connection()
     c = conn.cursor()
     c.execute('''
-        INSERT INTO tasks (info, completed, dueDate, parentID)
-        VALUES (?, ?, ?, ?)
-    ''', (info, int(completed), dueDate, parentID))
+        INSERT INTO tasks (title, description, completed, dueDate, parentID)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (title, description, int(completed), dueDate, parentID))
     conn.commit()
     task_id = c.lastrowid
     conn.close()
@@ -111,7 +112,7 @@ def get_all_tasks():
     return [dict(row) for row in rows]
 
 
-def update_task(task_id, info=None, completed=None, dueDate=None, parentID=None):
+def update_task(task_id, title=None, description=None, completed=None, dueDate=None, parentID=None):
     conn = get_db_connection()
     c = conn.cursor()
     task = get_task(task_id)
@@ -120,17 +121,22 @@ def update_task(task_id, info=None, completed=None, dueDate=None, parentID=None)
         return False  # Task not found
 
     # Update fields if provided
-    new_info = info if info is not None else task['info']
+    new_title = title if title is not None else task['title']
+    new_description = description if description is not None else task['description']
     new_completed = int(
         completed) if completed is not None else task['completed']
-    new_dueDate = dueDate if dueDate is not None else task['dueDate']
+
+    # Set dueDate to NULL if it's None, otherwise keep the current value or the new value
+    new_dueDate = None if dueDate is None else dueDate
     new_parentID = parentID if parentID is not None else task['parentID']
 
+    # Execute the SQL query
     c.execute('''
         UPDATE tasks
-        SET info = ?, completed = ?, dueDate = ?, parentID = ?
+        SET title = ?, description = ?, completed = ?, dueDate = ?, parentID = ?
         WHERE id = ?
-    ''', (new_info, new_completed, new_dueDate, new_parentID, task_id))
+    ''', (new_title, new_description, new_completed, new_dueDate, new_parentID, task_id))
+
     conn.commit()
     conn.close()
     return True

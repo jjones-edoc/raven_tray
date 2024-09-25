@@ -44,7 +44,8 @@ def handle_send_message(data):
         formatted_tasks = [
             {
                 'id': task['id'],
-                'info': task['info'],
+                'title': task['title'],
+                'description': task['description'],
                 'completed': bool(task['completed']),
                 'dueDate': task['dueDate'],
                 'parentID': task['parentID'],
@@ -71,20 +72,22 @@ def handle_send_message(data):
 
 @socketio.on('create_task')
 def handle_create_task(data):
-    info = data.get('info')
+    title = data.get('title')
+    description = data.get('description', '')
     completed = data.get('completed', False)
     dueDate = data.get('dueDate')
     parentID = data.get('parentID')
 
-    if not info:
-        emit('error', {'message': 'Task info is required.'})
+    if not title:
+        emit('error', {'message': 'Task title is required.'})
         return
 
-    task_id = create_task(info, completed, dueDate, parentID)
+    task_id = create_task(title, description, completed, dueDate, parentID)
     new_task = get_task(task_id)
     formatted_task = {
         'id': new_task['id'],
-        'info': new_task['info'],
+        'title': new_task['title'],
+        'description': new_task['description'],
         'completed': bool(new_task['completed']),
         'dueDate': new_task['dueDate'],
         'parentID': new_task['parentID'],
@@ -99,17 +102,20 @@ def handle_update_task(data):
         emit('error', {'message': 'Task ID is required.'})
         return
 
-    info = data.get('info')
+    title = data.get('title')
+    description = data.get('description')
     completed = data.get('completed')
     dueDate = data.get('dueDate')
     parentID = data.get('parentID')
 
-    success = update_task(task_id, info, completed, dueDate, parentID)
+    success = update_task(task_id, title, description,
+                          completed, dueDate, parentID)
     if success:
         updated_task = get_task(task_id)
         formatted_task = {
             'id': updated_task['id'],
-            'info': updated_task['info'],
+            'title': updated_task['title'],
+            'description': updated_task['description'],
             'completed': bool(updated_task['completed']),
             'dueDate': updated_task['dueDate'],
             'parentID': updated_task['parentID'],
@@ -142,11 +148,12 @@ def handle_get_parent_tasks(data):
         tasks = get_all_tasks()
     else:
         tasks = get_subtasks(parentTask.get('id'))
-        name = parentTask['info']
+        name = parentTask['title']
     formatted_tasks = [
         {
             'id': task['id'],
-            'info': task['info'],
+            'title': task['title'],
+            'description': task['description'],
             'completed': bool(task['completed']),
             'dueDate': task['dueDate'],
             'parentID': task['parentID'],
@@ -168,7 +175,8 @@ def handle_get_sub_tasks(data):
     formatted_tasks = [
         {
             'id': task['id'],
-            'info': task['info'],
+            'title': task['title'],
+            'description': task['description'],
             'completed': bool(task['completed']),
             'dueDate': task['dueDate'],
             'parentID': task['parentID'],
@@ -176,7 +184,7 @@ def handle_get_sub_tasks(data):
         for task in tasks
     ]
     emit('tasks_data', {'taskdata': {
-         'name': parentTask['info'], 'tasks': formatted_tasks}})
+         'name': parentTask['title'], 'tasks': formatted_tasks}})
 
 
 @socketio.on('flip_tasks')
@@ -185,9 +193,9 @@ def handle_flip_tasks(data):
     task_id2 = data.get('id2')
     task1 = get_task(task_id1)
     task2 = get_task(task_id2)
-    update_task(task_id1, info=task2['info'], completed=task2['completed'],
+    update_task(task_id1, title=task2['title'], description=task2['description'], completed=task2['completed'],
                 dueDate=task2['dueDate'], parentID=task2['parentID'])
-    update_task(task_id2, info=task1['info'], completed=task1['completed'],
+    update_task(task_id2, title=task1['title'], description=task1['description'], completed=task1['completed'],
                 dueDate=task1['dueDate'], parentID=task1['parentID'])
     taskName = "My Tasks"
     if task1['parentID'] is None:
@@ -195,11 +203,12 @@ def handle_flip_tasks(data):
     else:
         parentTask = get_task(task1['parentID'])
         tasks = get_subtasks(task1['parentID'])
-        taskName = parentTask['info']
+        taskName = parentTask['title']
     formatted_tasks = [
         {
             'id': task['id'],
-            'info': task['info'],
+            'title': task['title'],
+            'description': task['description'],
             'completed': bool(task['completed']),
             'dueDate': task['dueDate'],
             'parentID': task['parentID'],
