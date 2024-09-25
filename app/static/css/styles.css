@@ -72,7 +72,8 @@ body {
   margin-bottom: 0.5em;
 }
 
-.message ul, .message ol {
+.message ul,
+.message ol {
   margin-top: 0.5em;
   margin-bottom: 0.5em;
   padding-left: 20px;
@@ -122,4 +123,25 @@ body {
 .carousel-control-next,
   .carousel-control-prev /*, .carousel-indicators */ {
   filter: invert(100%);
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #6c757d;
+  font-size: 1.2rem; /* Adjust as needed */
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  color: #007bff; /* Add hover effect if desired */
+}
+
+.icon-btn.btn-danger {
+  color: #dc3545;
+}
+
+.icon-btn.btn-danger:hover {
+  color: #b21f2d;
 }

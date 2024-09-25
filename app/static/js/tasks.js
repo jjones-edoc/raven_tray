@@ -199,31 +199,107 @@ class TaskList {
 
     leftContainer.append(dragHandle, checkbox, taskInput);
 
-    // Right Container: Due Date, Subtasks, Delete
+    // Add description area
+    const descriptionContainer = document.createElement("div");
+    descriptionContainer.className = "description-container mt-2";
+
+    const descriptionDisplay = document.createElement("p");
+    descriptionDisplay.className = "task-description mb-0";
+    descriptionDisplay.textContent = task.description || "";
+    descriptionDisplay.style.cursor = "pointer";
+    descriptionDisplay.addEventListener("click", () => this.openDescriptionEditor(task.id));
+
+    const descriptionEditor = document.createElement("textarea");
+    descriptionEditor.className = "form-control task-description-editor d-none";
+    descriptionEditor.value = task.description || "";
+    descriptionEditor.addEventListener("blur", () => this.saveTaskDescription(task.id, descriptionEditor.value));
+
+    descriptionContainer.append(descriptionDisplay, descriptionEditor);
+
+    if (!task.description) {
+      descriptionContainer.classList.add("d-none"); // Hide description if it's empty
+    }
+
+    // Right Container: Due Date, Subtasks, Delete, Add Description
     const taskActions = document.createElement("div");
     taskActions.className = "task-actions d-flex gap-2";
 
-    // Due Date Badge or Button
+    // Add Description Button with consistent icon styling
+    if (!task.description) {
+      const addDescriptionBtn = document.createElement("button");
+      addDescriptionBtn.className = "icon-btn btn-sm"; // Consistent class
+      addDescriptionBtn.title = "Add Description";
+      addDescriptionBtn.innerHTML = '<i class="fas fa-pencil-alt"></i>'; // Font Awesome icon for editing
+      addDescriptionBtn.addEventListener("click", () => this.addDescription(task.id));
+      taskActions.appendChild(addDescriptionBtn);
+    }
+
+    // Due Date Button or Badge with consistent icon styling
     if (task.dueDate) {
       const dueDateBadge = this.createDueDateBadge(task);
       taskActions.appendChild(dueDateBadge);
     } else {
       const dateBtn = this.createDateButton(task.id);
+      dateBtn.className = "icon-btn btn-sm"; // Apply consistent class
       taskActions.appendChild(dateBtn);
     }
 
-    // Subtasks Button
+    // Subtasks Button with consistent icon styling
     const viewSubtasksBtn = this.createSubtasksButton(task.id);
+    viewSubtasksBtn.className = "icon-btn btn-sm"; // Apply consistent class
     taskActions.appendChild(viewSubtasksBtn);
 
-    // Delete Button
+    // Delete Button with consistent icon styling
     const deleteBtn = this.createDeleteButton(task.id);
+    deleteBtn.className = "icon-btn btn-sm btn-danger"; // Apply consistent class, add danger for delete
     taskActions.appendChild(deleteBtn);
 
     taskContent.append(leftContainer, taskActions);
-    taskItem.appendChild(taskContent);
+    taskItem.append(taskContent, descriptionContainer); // Add description to task item
 
     return taskItem;
+  }
+
+  addDescription(taskId) {
+    const taskElement = this.taskListElement.querySelector(`[data-id='${taskId}']`);
+    const descriptionContainer = taskElement.querySelector(".description-container");
+    const descriptionEditor = taskElement.querySelector(".task-description-editor");
+    const descriptionDisplay = taskElement.querySelector(".task-description");
+
+    descriptionContainer.classList.remove("d-none"); // Show description container
+    descriptionDisplay.classList.add("d-none");
+    descriptionEditor.classList.remove("d-none");
+    descriptionEditor.focus(); // Automatically focus on the editor
+  }
+
+  openDescriptionEditor(taskId) {
+    const taskElement = this.taskListElement.querySelector(`[data-id='${taskId}']`);
+    const descriptionDisplay = taskElement.querySelector(".task-description");
+    const descriptionEditor = taskElement.querySelector(".task-description-editor");
+
+    descriptionDisplay.classList.add("d-none");
+    descriptionEditor.classList.remove("d-none");
+    descriptionEditor.focus(); // Automatically focus on the editor
+  }
+
+  saveTaskDescription(taskId, newDescription) {
+    this.updateTask(taskId, { description: newDescription });
+
+    // Revert back to the display mode
+    const taskElement = this.taskListElement.querySelector(`[data-id='${taskId}']`);
+    const descriptionDisplay = taskElement.querySelector(".task-description");
+    const descriptionEditor = taskElement.querySelector(".task-description-editor");
+    const addDescriptionBtn = taskElement.querySelector(".btn-secondary");
+
+    if (newDescription) {
+      descriptionDisplay.textContent = newDescription;
+      addDescriptionBtn?.remove(); // Remove the Add Description button
+    } else {
+      descriptionDisplay.textContent = "";
+    }
+
+    descriptionEditor.classList.add("d-none");
+    descriptionDisplay.classList.remove("d-none");
   }
 
   createDueDateBadge(task) {
