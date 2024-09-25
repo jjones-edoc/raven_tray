@@ -1,4 +1,5 @@
 from typing import List, Dict, Any
+from datetime import date
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.schema import AIMessage
@@ -60,6 +61,8 @@ def general_chat_raven(messages: List[Dict[str, Any]]) -> str:
 
     character_prompt = read_prompt_from_file('character.md')
     functions_prompt = read_prompt_from_file('functions.md')
+    functions_prompt = functions_prompt.replace(
+        '{DATE}', date.today().strftime('%Y-%m-%d'))
 
     formatted_messages = get_message_placeholder(messages)
 

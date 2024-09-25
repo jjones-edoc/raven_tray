@@ -1,4 +1,4 @@
-**Current Date**: 09/06/2024
+**Current Date**: {DATE}
 
 ### Responding
 

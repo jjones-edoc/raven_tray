@@ -31,14 +31,13 @@ def handle_send_message(data):
 
     if message_content == '':
         return
-    if message_content == '/clear':
+    if message_content.startswith('/c'):
         clear_message_history(channel_id)
         emit('receive_message', {'type': 'clear'})
         return
 
-    if message_content == '/tasks':
+    if message_content.startswith('/t'):
         tasks = get_all_tasks()
-        #  if no tasks, return a new blank task
         if not tasks:
             create_task('New Task')
             tasks = get_all_tasks()
@@ -56,25 +55,20 @@ def handle_send_message(data):
              'name': 'My Tasks', 'tasks': formatted_tasks}})
         return
 
-    # Store the user message
     store_message(channel_id, 'human', message_content)
 
-    # Emit the user's message
     user_message = {'role': 'human', 'content': message_content}
     emit('receive_message', {'type': 'message', 'user_message': user_message})
 
     response_message = raven.general_chat_raven(
         get_message_history(channel_id))
 
-    # Generate and store the AI response
     store_message(channel_id, 'ai', response_message)
 
-    # Emit the AI's response
     ai_message = {'role': 'ai', 'content': response_message}
     emit('receive_message', {'type': 'response', 'ai_message': ai_message})
 
 
-# Create a new task
 @socketio.on('create_task')
 def handle_create_task(data):
     info = data.get('info')
@@ -96,8 +90,6 @@ def handle_create_task(data):
         'parentID': new_task['parentID'],
     }
     emit('task_created', {'task': formatted_task})
-
-# Update an existing task
 
 
 @socketio.on('update_task')
@@ -125,8 +117,6 @@ def handle_update_task(data):
         emit('task_updated', {'task': formatted_task})
     else:
         emit('error', {'message': 'Task not found.'})
-
-# Delete a task
 
 
 @socketio.on('delete_task')
@@ -221,5 +211,5 @@ def handle_flip_tasks(data):
 
 
 if __name__ == '__main__':
-    init_db()  # Initialize the database
+    init_db()
     socketio.run(app, debug=True)
