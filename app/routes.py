@@ -13,8 +13,10 @@ from app.db import (
     get_task,
     update_task,
     delete_task,
+    get_task_str
 )
 import app.ai.raven as raven
+from tools.logging_utils import logger
 
 
 @app.route('/')
@@ -217,6 +219,19 @@ def handle_flip_tasks(data):
     ]
     emit('tasks_data', {'taskdata': {
          'name': taskName, 'tasks': formatted_tasks}})
+
+
+@socketio.on('ai_message_task')
+def handle_ai_message_task(data):
+    tasks = data.get('tasks')
+    logger.debug(f"Tasks: {tasks}")
+    logger.debug(f"Message: {data.get('message')}")
+    tasks_info = ""
+    if tasks:
+        for task in tasks:
+            tasks_info += get_task_str(task)+'\n\n'
+    response_message = raven.task_talk(data.get('message'), tasks_info)
+    emit('ai_task_response', {'message': response_message})
 
 
 if __name__ == '__main__':

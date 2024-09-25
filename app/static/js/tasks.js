@@ -372,13 +372,11 @@ class TaskList {
     if (this.chatContainer.classList.contains("d-none")) {
       this.chatContainer.classList.remove("d-none");
     }
-
-    // Call the external AI message handler
-    if (typeof this.onMessageAI === "function") {
-      this.onMessageAI(message, (aiResponse) => {
-        this.displayMessage(aiResponse, "ai-message");
-      });
+    let task_ids = [];
+    for (const task of this.taskData.tasks) {
+      task_ids.push(task.id);
     }
+    this.socket.emit("ai_message_task", { message, tasks: task_ids });
   };
 
   displayMessage(message, className) {

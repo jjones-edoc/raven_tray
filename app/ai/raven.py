@@ -96,3 +96,14 @@ def general_chat_raven(messages: List[Dict[str, Any]]) -> str:
 
     logger.info(f"AI Interaction - Output: {ai_response}")
     return ai_response
+
+
+def task_talk(user_msg, tasks_info) -> str:
+    logger.info(f"AI Interaction - Input: {user_msg}")
+    character_prompt = read_prompt_from_file('character.md')
+    tasks_prompt = read_prompt_from_file('tasks.md')
+    tasks_prompt = tasks_prompt.replace(
+        '{tasks_info}', tasks_info)
+    full_prompt = f"{character_prompt}\n\n{tasks_prompt}"
+    response = model.invoke([HumanMessage(content=full_prompt)])
+    return response.content

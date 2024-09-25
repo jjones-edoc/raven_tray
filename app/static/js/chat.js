@@ -69,6 +69,10 @@ const initializeChat = (messages, channelId) => {
       ActiveTaskList.renderTasks(ActiveTaskList.taskData.tasks);
     });
 
+    socket.on("ai_task_response", (data) => {
+      ActiveTaskList.displayMessage(data.message, "ai-message");
+    });
+
     const sendMessage = () => {
       const messageInput = document.getElementById("message-input");
       const messageContent = messageInput.value;

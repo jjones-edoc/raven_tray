@@ -160,3 +160,10 @@ def get_subtasks(parent_id):
     rows = c.fetchall()
     conn.close()
     return [dict(row) for row in rows]
+
+
+def get_task_str(taskID):
+    task = get_task(taskID)
+    taskStr = f"Task ID: {task['id']}\nTitle: {task['title']}\nDescription: {task['description']}\nCompleted: {
+        task['completed']}\nDue Date: {task['dueDate']}\nParent ID: {task['parentID']}"
+    return taskStr
