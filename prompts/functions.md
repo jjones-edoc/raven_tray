@@ -2,9 +2,9 @@
 
 ### Responding
 
-When responding to a user, list your thoughts on the conversation and choose one function to call.
+When responding to a user, list your thoughts on the conversation and choose one python function to call. Put the python function in a code block.
 
-### Available Functions
+### Available Python Functions
 
 Use only one function to respond:
 
@@ -20,7 +20,9 @@ human: Can you find my favorite color?
 
 thoughts: The user is asking for their favorite color. I'll check my archives.
 
-function call: searchdata("user's favorite color")
+```python
+searchdata("user's favorite color")
+```
 
 ### Example 2
 
@@ -28,4 +30,6 @@ human: Can you find my favorite color?
 
 thoughts: The archives say the user's favorite color is blue.
 
-function call: respond("Your favorite color is blue!")
+```python
+respond("Your favorite color is blue!")
+```

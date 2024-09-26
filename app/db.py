@@ -167,3 +167,60 @@ def get_task_str(taskID):
     taskStr = f"Task ID: {task['id']}\nTitle: {task['title']}\nDescription: {task['description']}\nCompleted: {
         task['completed']}\nDue Date: {task['dueDate']}\nParent ID: {task['parentID']}"
     return taskStr
+
+
+def db_query(sql, params=()):
+    conn = get_db_connection()
+    c = conn.cursor()
+    try:
+        c.execute(sql, params)
+        rows = c.fetchall()
+        if not rows:
+            return "No results found."
+
+        column_names = rows[0].keys()
+
+        header = "| " + " | ".join(column_names) + " |"
+        separator = "| " + " | ".join(['---'] * len(column_names)) + " |"
+
+        table_rows = []
+        for row in rows:
+            row_data = "| " + \
+                " | ".join(
+                    str(row[col]) if row[col] is not None else "" for col in column_names) + " |"
+            table_rows.append(row_data)
+
+        markdown_table = "\n".join([header, separator] + table_rows)
+        return markdown_table
+    except sqlite3.Error as e:
+        return f"An error occurred: {e}"
+    finally:
+        conn.close()
+
+
+def db_command(sql, params=()):
+    conn = get_db_connection()
+    c = conn.cursor()
+    try:
+        c.execute(sql, params)
+        conn.commit()
+        rowcount = c.rowcount
+
+        command_type = sql.strip().split()[0].upper()
+
+        if command_type == "INSERT":
+            message = f"{rowcount} item{
+                's' if rowcount != 1 else ''} inserted."
+        elif command_type == "UPDATE":
+            message = f"{rowcount} item{'s' if rowcount != 1 else ''} updated."
+        elif command_type == "DELETE":
+            message = f"{rowcount} item{'s' if rowcount != 1 else ''} deleted."
+        else:
+            message = f"{rowcount} item{
+                's' if rowcount != 1 else ''} affected."
+
+        return message
+    except sqlite3.Error as e:
+        return f"An error occurred: {e}"
+    finally:
+        conn.close()
